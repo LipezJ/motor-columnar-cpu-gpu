@@ -11,7 +11,8 @@
 #SBATCH --exclusive
 # Toda la memoria del nodo: sin --mem, SLURM limita el job a su memoria por defecto y el motor carga ~9 GB.
 #SBATCH --mem=0
-#SBATCH --time=06:00:00
+# El QOS students permite como mucho 1 hora por job.
+#SBATCH --time=01:00:00
 #SBATCH --output=motor-bench-%j.log
 
 # SF 50 y no 10: con 256 hilos, SF 10 deja ~3 morsels por hilo y el desbalance tapa el speedup.

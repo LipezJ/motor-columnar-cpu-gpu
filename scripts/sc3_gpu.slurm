@@ -9,7 +9,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --time=02:00:00
+# El QOS students permite como mucho 1 hora por job.
+#SBATCH --time=00:30:00
 #SBATCH --output=motor-bench-%j.log
 
 # SF 10, el mismo que en Colab, para comparar la Titan X con la T4.
