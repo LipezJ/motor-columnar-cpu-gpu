@@ -26,7 +26,7 @@ def comparar(esperado: list, obtenido: list) -> list:
     for i, (fe, fo) in enumerate(zip(esperado, obtenido)):
         for j, (e, o) in enumerate(zip(fe, fo)):
             if not igual(e, o):
-                errores.append(f"fila {i}, columna {esperado[0][j]}: {o} ≠ {e}")
+                errores.append(f"fila {i}, columna {esperado[0][j]}: obtenido {o}, esperado {e}")
     return errores
 
 

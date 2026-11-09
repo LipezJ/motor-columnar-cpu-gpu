@@ -1,6 +1,6 @@
-# make          → build/motor con los backends serial y omp
-# make CUDA=1   → además el backend cuda (requiere nvcc)
-# CUDA_ARCH     → arquitectura de la GPU destino: sm_75 T4, sm_80 A100, sm_89 L4
+# make: compila build/motor con los backends serial y omp.
+# make CUDA=1: añade el backend cuda (requiere nvcc).
+# CUDA_ARCH: arquitectura de la GPU destino (sm_75 para T4, sm_80 para A100, sm_89 para L4).
 
 CXXFLAGS := -O3 -std=c++17 -Wall -Wextra
 CUDA_ARCH ?= sm_75

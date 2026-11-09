@@ -22,7 +22,7 @@
 
 static void chequear(cudaError_t e, const char* expr, const char* archivo, int linea) {
   if (e != cudaSuccess) {
-    std::fprintf(stderr, "Error CUDA en %s:%d: %s → %s\n", archivo, linea, expr, cudaGetErrorString(e));
+    std::fprintf(stderr, "Error CUDA en %s:%d: %s: %s\n", archivo, linea, expr, cudaGetErrorString(e));
     std::exit(4);
   }
 }
@@ -40,7 +40,7 @@ static unsigned bloques(int64_t n) {
   return static_cast<unsigned>(std::max<int64_t>(1, (n + TILE - 1) / TILE));
 }
 
-// Fila k del hilo t del tile: k · BLOCK_THREADS + t (reparto rayado de Crystal, para que cada warp lea 128 B
+// Fila k del hilo t del tile: k * BLOCK_THREADS + t (reparto rayado de Crystal, para que cada warp lea 128 B
 // consecutivos por columna).
 __device__ __forceinline__ int fila_tile(int k) { return k * BLOCK_THREADS + threadIdx.x; }
 
@@ -169,7 +169,7 @@ ResQ6 q6_cuda(const Datos& d, Tiempos& t) {
   return static_cast<ResQ6>(h);
 }
 
-// Ranura de (returnflag, linestatus): TPC-H solo genera returnflag ∈ {A, N, R} y linestatus ∈ {F, O}.
+// Ranura de (returnflag, linestatus): TPC-H solo genera returnflag en {A, N, R} y linestatus en {F, O}.
 // Cualquier otro valor caería en la ranura de R o de O.
 constexpr int GRUPOS_Q1 = 6;
 constexpr int AGREGADOS_Q1 = 6;  // sum_qty, sum_base_price, sum_disc_price, sum_charge, sum_disc, count
@@ -291,7 +291,7 @@ ResQ1 q1_cuda(const Datos& d, Tiempos& t) {
 // Direccionamiento abierto con sondeo lineal en tres arreglos paralelos de capacidad potencia de 2:
 //   claves  o_orderkey, o VACIO si la ranura está libre;
 //   filas   posición de la fila en orders, para leer o_orderdate y o_shippriority solo de los grupos finales;
-//   revenue suma de l_extendedprice · (100 - l_discount) de las líneas que encajan (escala 1e4).
+//   revenue suma de l_extendedprice * (100 - l_discount) de las líneas que encajan (escala 1e4).
 // Direccionamiento abierto y no encadenamiento: se construye sin reservar memoria en el kernel, insertando con un
 // atomicCAS sobre la clave, como el hash join de Crystal.
 // Sondeo lineal: la ranura siguiente suele estar en el mismo sector de 32 B, así que una colisión casi nunca cuesta
@@ -300,7 +300,7 @@ ResQ1 q1_cuda(const Datos& d, Tiempos& t) {
 // o_orderkey es clave primaria de orders, así que cada ranura de build es exactamente un grupo de GROUP BY l_orderkey.
 constexpr int32_t VACIO = -1;  // las claves de TPC-H empiezan en 1; cudaMemset(0xFF) deja VACIO en cada ranura
 
-// Hash de Fibonacci (Knuth, TAOCP vol. 3, §6.4): toma los bits altos del producto.
+// Hash de Fibonacci (Knuth, TAOCP vol. 3, sección 6.4): toma los bits altos del producto.
 // Los bits altos dependen de todos los bits de la clave; o_orderkey es denso en grupos de 8 de cada 32.
 __device__ __forceinline__ uint32_t hash_clave(int32_t k, int bits) {
   return static_cast<uint32_t>((static_cast<uint64_t>(static_cast<uint32_t>(k)) * 0x9E3779B97F4A7C15ull) >>
@@ -390,7 +390,7 @@ __global__ void k_q3_probe(const int32_t* __restrict__ orderkey, const int32_t* 
     if (sel[k]) atomicAdd(revenue + ranura[k], static_cast<unsigned long long>(p[k]) * (100 - d[k]));
 }
 
-// Un grupo existe si y solo si su revenue es positivo: en TPC-H l_extendedprice > 0 y l_discount ≤ 10, así que
+// Un grupo existe si y solo si su revenue es positivo: en TPC-H l_extendedprice > 0 y l_discount <= 10, así que
 // toda línea que encaja suma algo.
 // ponytail: un atomicAdd por grupo sobre n_grupos; agregar por warp (__ballot_sync + __popc) si pesa en el perfil.
 __global__ void k_q3_recolectar(const int32_t* __restrict__ claves, const int32_t* __restrict__ filas,

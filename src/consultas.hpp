@@ -38,8 +38,8 @@ struct FilaQ1 {
   int8_t returnflag, linestatus;
   int64_t sum_qty;          // escala 1e2
   int64_t sum_base_price;   // escala 1e2
-  int64_t sum_disc_price;   // escala 1e4: price · (100 - discount)
-  int64_t sum_charge;       // escala 1e6: price · (100 - discount) · (100 + tax)
+  int64_t sum_disc_price;   // escala 1e4: price * (100 - discount)
+  int64_t sum_charge;       // escala 1e6: price * (100 - discount) * (100 + tax)
   int64_t sum_disc;         // escala 1e2, para avg_disc
   int64_t count;
 };

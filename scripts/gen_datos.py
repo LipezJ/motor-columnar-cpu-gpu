@@ -15,7 +15,7 @@ import numpy as np
 # Los decimales se guardan en centavos (escala 100) como int32.
 # El precio máximo de TPC-H (~104 950,00) cabe de sobra en int32 en centavos.
 # Las fechas se guardan como días desde 1970-01-01.
-# Las claves caben en int32 hasta SF ~350 (o_orderkey llega a 6 000 000 · SF).
+# Las claves caben en int32 hasta SF ~350 (o_orderkey llega a 6 000 000 * SF).
 COLUMNAS = {
     "lineitem": {
         "l_orderkey": ("l_orderkey", np.int32),
@@ -85,7 +85,7 @@ ESPERADO = {
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("sf", type=float, help="factor de escala de TPC-H (1 ≈ 6 M filas de lineitem)")
+    p.add_argument("sf", type=float, help="factor de escala de TPC-H (SF 1 son unos 6 M de filas de lineitem)")
     p.add_argument("--salida", default="data")
     args = p.parse_args()
 
@@ -93,7 +93,7 @@ def main():
     raiz = Path(args.salida) / f"sf{sf_txt}"
     con = duckdb.connect()
     con.execute("INSTALL tpch; LOAD tpch;")
-    print(f"Generando TPC-H SF={sf_txt}…")
+    print(f"Generando TPC-H SF={sf_txt}")
     con.execute(f"CALL dbgen(sf={args.sf})")
 
     for tabla, cols in COLUMNAS.items():

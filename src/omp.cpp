@@ -35,8 +35,8 @@ ResQ6 q6_omp(const Datos& d) {
   return total;
 }
 
-// Código de grupo de Q1: (returnflag % 3) · 2 + (linestatus == 'O').
-// Solo es inyectivo para los alfabetos de TPC-H: returnflag ∈ {A, N, R} y linestatus ∈ {F, O}.
+// Código de grupo de Q1: (returnflag % 3) * 2 + (linestatus == 'O').
+// Solo es inyectivo para los alfabetos de TPC-H: returnflag en {A, N, R} y linestatus en {F, O}.
 constexpr int GRUPOS_Q1 = 6;
 constexpr int8_t FLAG_DE_CODIGO[3] = {'N', 'R', 'A'};  // inversa de returnflag % 3
 
@@ -102,7 +102,7 @@ ResQ3 q3_omp(const Datos& d) {
   const auto& o = d.o;
   const auto& l = d.l;
 
-  // c_custkey es densa (1..150 000 · SF en TPC-H): un arreglo indexado por clave sustituye a un conjunto hash.
+  // c_custkey es densa (1..150 000 * SF en TPC-H): un arreglo indexado por clave sustituye a un conjunto hash.
   int32_t max_cliente = 0;
 #pragma omp parallel for reduction(max : max_cliente)
   for (size_t i = 0; i < c.n; i++) max_cliente = std::max(max_cliente, c.custkey[i]);
@@ -116,7 +116,7 @@ ResQ3 q3_omp(const Datos& d) {
     return o.orderdate[i] < Q3_FECHA && ck >= 0 && ck <= max_cliente && es_building[ck];
   };
 
-  // Contar primero deja la tabla al tamaño justo (factor de carga ≤ 0,5).
+  // Contar primero deja la tabla al tamaño justo (factor de carga <= 0,5).
   // En SF1 pasan 147 126 de 1 500 000 orders: la tabla ocupa 8 MB en vez de los 64 MB que daría dimensionarla con o.n.
   size_t n_build = 0;
 #pragma omp parallel for schedule(dynamic, 1) reduction(+ : n_build)
@@ -155,7 +155,7 @@ ResQ3 q3_omp(const Datos& d) {
 
   // Probe: la suma por orderkey va con fetch_add sobre revenue[h].
   // En SF1 solo 30 519 filas de lineitem suman, repartidas en 11 620 orderkeys (la contención es despreciable).
-  // Una tabla de revenue por hilo costaría cap · 8 B · hilos de memoria y un merge de cap · hilos sumas.
+  // Una tabla de revenue por hilo costaría cap * 8 B * hilos de memoria y un merge de cap * hilos sumas.
 #pragma omp parallel for schedule(dynamic, 1)
   for (size_t m = 0; m < num_morsels(l.n); m++) {
     const size_t ini = m * TAM_MORSEL, fin = std::min(l.n, ini + TAM_MORSEL);
