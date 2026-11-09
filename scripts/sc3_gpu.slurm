@@ -8,6 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
+#SBATCH --mem=16G
 #SBATCH --time=02:00:00
 #SBATCH --output=motor-bench-%j.log
 
@@ -34,8 +35,9 @@ make clean BUILD=build-gpu
 make BUILD=build-gpu CUDA=1 CUDA_ARCH=sm_52 CXX="$GXX" NVCC="nvcc -ccbin $GXX"
 # Datos en el /tmp del nodo: es tmpfs y persiste entre jobs.
 # El home tiene cuota de 1 GB y /mnt/san/scratch no admite escritura de estudiantes.
-# Se cargan una vez desde guane, con el .tar.zst que genera el Mac:
-#   srun -p gpu_titan -w felix sh -c 'mkdir -p /tmp/$USER && zstd -dc | tar -xf - -C /tmp/$USER' < sf10.tar.zst
+# Se cargan una vez desde guane, con el .tar.zst que genera el Mac.
+# --mem porque lo que se escribe en tmpfs cuenta como memoria del paso de SLURM.
+#   srun --mem=32G -p gpu_titan -w felix sh -c 'mkdir -p /tmp/$USER && zstd -dc | tar --warning=no-unknown-keyword -xf - -C /tmp/$USER' < sf10.tar.zst
 DATOS=${DATOS:-/tmp/$USER}
 if [ ! -f "$DATOS/sf$SF/esperado/q6.csv" ]; then
   echo "Faltan los datos en $DATOS/sf$SF de $(hostname)" >&2

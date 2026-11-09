@@ -9,6 +9,8 @@
 #SBATCH --cpus-per-task=256
 # Nodo exclusivo: otro trabajo en el nodo compartiría el ancho de banda de memoria y falsearía el speedup.
 #SBATCH --exclusive
+# Toda la memoria del nodo: sin --mem, SLURM limita el job a su memoria por defecto y el motor carga ~9 GB.
+#SBATCH --mem=0
 #SBATCH --time=06:00:00
 #SBATCH --output=motor-bench-%j.log
 
@@ -28,8 +30,9 @@ make clean BUILD=build-cpu
 make BUILD=build-cpu
 # Datos en el /tmp del nodo: es tmpfs y persiste entre jobs.
 # El home tiene cuota de 1 GB y /mnt/san/scratch no admite escritura de estudiantes.
-# Se cargan una vez desde guane, con el .tar.zst que genera el Mac:
-#   srun -p amd -w smexa sh -c 'mkdir -p /tmp/$USER && zstd -dc | tar -xf - -C /tmp/$USER' < sf50.tar.zst
+# Se cargan una vez desde guane, con el .tar.zst que genera el Mac.
+# --mem porque lo que se escribe en tmpfs cuenta como memoria del paso de SLURM.
+#   srun --mem=32G -p amd -w smexa sh -c 'mkdir -p /tmp/$USER && zstd -dc | tar --warning=no-unknown-keyword -xf - -C /tmp/$USER' < sf50.tar.zst
 DATOS=${DATOS:-/tmp/$USER}
 if [ ! -f "$DATOS/sf$SF/esperado/q6.csv" ]; then
   echo "Faltan los datos en $DATOS/sf$SF de $(hostname)" >&2
