@@ -1,0 +1,8 @@
+build/
+data/
+*.o
+*.bin
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+.claude/settings.local.json
