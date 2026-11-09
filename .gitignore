@@ -6,3 +6,5 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 .claude/settings.local.json
+.venv/
+motor-bench-*.log

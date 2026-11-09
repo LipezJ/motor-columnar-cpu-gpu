@@ -23,6 +23,19 @@ Un mismo motor columnar con tres backends, evaluado con consultas de TPC-H:
 Generados con DuckDB (`CALL dbgen(sf=N)`) y exportados a columnas binarias en `data/` (no versionado).
 Los resultados de cada consulta se validan contra DuckDB.
 
+## Uso
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install duckdb numpy matplotlib
+.venv/bin/python scripts/gen_datos.py 10
+make                      # serial + omp; make CUDA=1 CUDA_ARCH=sm_80 para añadir cuda
+./build/motor data/sf10 omp q1 --hilos 8 | .venv/bin/python scripts/validar.py data/sf10/esperado/q1.csv
+.venv/bin/python scripts/bench.py --datos data/sf10 --backends serial,omp --etiqueta mac
+.venv/bin/python scripts/graficas.py resultados/*.csv
+```
+
+En Colab: `colab.ipynb`. En el clúster SC3: rellenar la partición en `scripts/sc3.slurm` y `sbatch scripts/sc3.slurm`.
+
 ## Entornos
 
 - **Colab Pro**: desarrollo de kernels CUDA; comparación T4 / L4 / A100.
