@@ -1,158 +1,272 @@
 % Póster digital del proyecto final. Compilar desde esta carpeta: tectonic poster.tex
 % Las figuras salen de scripts/graficas.py (resultados/graficas/*.pdf).
-\documentclass[25pt, a0paper, landscape, margin=0mm, innermargin=15mm, blockverticalspace=12mm, colspace=15mm]{tikzposter}
+\documentclass[20pt, a0paper, landscape, margin=0mm, innermargin=18mm, blockverticalspace=6mm, colspace=18mm]{tikzposter}
 
 \usepackage[spanish, es-noshorthands]{babel}
 \usepackage{fontspec}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usetikzlibrary{positioning, arrows.meta}
+\usetikzlibrary{positioning, arrows.meta, calc}
 \renewcommand{\familydefault}{\sfdefault}
 \tikzposterlatexaffectionproofoff
 
+% Azul marino del encabezado y los títulos, verde UIS para los acentos; los colores de datos son los de scripts/graficas.py.
+\definecolor{marino}{HTML}{1B365D}
+\definecolor{uis}{HTML}{8DB92E}
+\definecolor{celeste}{HTML}{E8F0FA}
+\definecolor{tinta}{HTML}{1F2933}
 \definecolor{azul}{HTML}{0072B2}
 \definecolor{verde}{HTML}{009E73}
-\definecolor{naranja}{HTML}{E69F00}
-\definecolor{fondo}{HTML}{F4F6F8}
-\definecolor{tinta}{HTML}{1F2933}
+\definecolor{gris}{HTML}{999999}
 
-\usetheme{Simple}
-\usetitlestyle{Filled}
-% Título en negrita normal: el tema lo pone en versalitas.
-\makeatletter
-\settitle{\centering\vbox{\color{titlefgcolor}{\bfseries\Huge\@title\par}\vspace*{0.8em}{\LARGE\@author\par}\vspace*{0.6em}{\large\@institute}}}
-\makeatother
-\colorlet{backgroundcolor}{fondo}
-\colorlet{framecolor}{azul}
-\colorlet{titlefgcolor}{white}
-\colorlet{titlebgcolor}{azul}
+\usetheme{Default}
+\colorlet{backgroundcolor}{white}
+\colorlet{framecolor}{white}
+\colorlet{titlefgcolor}{marino}
+\colorlet{titlebgcolor}{white}
 \colorlet{blocktitlebgcolor}{white}
-\colorlet{blocktitlefgcolor}{azul}
+\colorlet{blocktitlefgcolor}{marino}
 \colorlet{blockbodybgcolor}{white}
 \colorlet{blockbodyfgcolor}{tinta}
+\colorlet{innerblocktitlebgcolor}{celeste}
+\colorlet{innerblockbodybgcolor}{celeste}
+\colorlet{innerblocktitlefgcolor}{marino}
+\colorlet{innerblockbodyfgcolor}{tinta}
+
+% Bloques sin marco: título azul alineado a la izquierda con una línea verde debajo.
+\defineblockstyle{Linea}{
+  titlewidthscale=1, bodywidthscale=1, titleleft, titleoffsetx=0pt, titleoffsety=0pt, bodyoffsetx=0pt,
+  bodyoffsety=0pt, bodyverticalshift=0pt, roundedcorners=0, linewidth=0pt, titleinnersep=6mm, bodyinnersep=6mm
+}{
+  \ifBlockHasTitle
+    \draw[draw=uis, line width=3mm] (blocktitle.south west) -- (blocktitle.south east);
+  \fi
+}
+\useblockstyle{Linea}
+\defineinnerblockstyle{Panel}{
+  titlewidthscale=1, bodywidthscale=1, titleleft, titleoffsetx=0pt, titleoffsety=0pt, bodyoffsetx=0pt,
+  bodyoffsety=0pt, bodyverticalshift=0pt, roundedcorners=12, linewidth=0pt, titleinnersep=5mm, bodyinnersep=7mm
+}{
+  \ifInnerblockHasTitle
+    \draw[fill=innerblockbodybgcolor, draw=none, rounded corners=12] (innerblockbody.south west) rectangle (innerblocktitle.north east);
+  \else
+    \draw[fill=innerblockbodybgcolor, draw=none, rounded corners=12] (innerblockbody.south west) rectangle (innerblockbody.north east);
+  \fi
+}
+\useinnerblockstyle{Panel}
 
 \newcommand{\figura}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}{\fbox{\parbox{#2}{\centering\vspace{4cm}Falta #1\vspace{4cm}}}}}
+\newcommand{\dato}[1]{{\color{marino}\bfseries #1}}
+
+% Estilos de los diagramas.
+\tikzset{
+  caja/.style={draw=marino, line width=2pt, rounded corners=6pt, fill=white, align=center, inner sep=10pt},
+  flecha/.style={-{Latex[length=6mm]}, line width=3pt, draw=marino},
+}
 
 \title{¿Cuándo compensa la GPU para consultas analíticas?}
-\author{Janer Alberto Vega Jácome (2210048) \quad Juan David Lipez Guevara (2223102) \quad Juan David Mena Gamboa (2221886) \quad Camilo Carvajal Castro (2190187)}
-\institute{Programación Paralela, grupo 1 \quad Escuela de Ingeniería de Sistemas e Informática, Universidad Industrial de Santander\\[0.3em] Profesores: Carlos Jaime Barrios Hernández y Sergio Augusto Gélvez Cortés}
+\author{Janer Alberto Vega Jácome \quad Juan David Lipez Guevara \quad Juan David Mena Gamboa \quad Camilo Carvajal Castro}
+\institute{Programación Paralela, grupo 1 \quad Escuela de Ingeniería de Sistemas e Informática, Universidad Industrial de Santander\\Profesores: Carlos Jaime Barrios Hernández y Sergio Augusto Gélvez Cortés}
+
+\makeatletter
+\settitle{
+  \begin{minipage}[c]{0.15\linewidth}\centering\includegraphics[width=0.8\linewidth]{logos/uis.png}\end{minipage}%
+  \begin{minipage}[c]{0.7\linewidth}\centering\color{titlefgcolor}
+    {\bfseries\fontsize{80}{90}\selectfont\@title\par}\vspace{0.3em}
+    {\Large\color{marino!80}Un motor de consultas columnar en serial, OpenMP y CUDA\par}\vspace{0.6em}
+    {\LARGE\color{tinta}\@author\par}\vspace{0.4em}
+    {\large\color{tinta}\@institute\par}
+  \end{minipage}%
+  \begin{minipage}[c]{0.15\linewidth}\centering
+    \IfFileExists{logos/sc3.png}{\includegraphics[width=0.8\linewidth]{logos/sc3.png}}{}
+  \end{minipage}
+}
+\makeatother
 
 \begin{document}
-\maketitle
+\maketitle[width=1150mm, roundedcorners=0, linewidth=0pt, titletotopverticalspace=6mm, titletoblockverticalspace=4mm]
 
 \begin{columns}
 
-% Columna 1: problema y método
-\column{0.3}
+%%%%%%%%%%%%%%%% Columna 1: contexto y método %%%%%%%%%%%%%%%%
+\column{0.27}
 
-\block{La pregunta}{
-Las GPU dominan el entrenamiento de modelos de IA.
-¿Ganan también en el trabajo diario de una base de datos analítica: filtrar, agregar y cruzar tablas de cientos de millones de filas?
+\block{Contexto}{
+Las GPU dominan el entrenamiento de IA. ¿Ganan también en el trabajo diario de una base de datos analítica: filtrar, agregar y cruzar tablas de cientos de millones de filas?
 
-\vspace{0.5em}
-\textbf{Objetivo:} medir, con el mismo motor y los mismos datos, cuándo compensa cada arquitectura (un núcleo, una CPU de muchos núcleos o una GPU) y qué la limita.
+\vspace{0.6em}
+\innerblock{}{
+\dato{Objetivo:} con el mismo motor y los mismos datos, medir cuándo compensa cada arquitectura (un núcleo, una CPU de muchos núcleos o una GPU) y qué la limita.
+}
 }
 
 \block{Qué construimos}{
-Un motor de consultas columnar en C++ y CUDA, en tres versiones con la misma lógica:
+Un motor de consultas columnar escrito desde cero, con tres versiones de la misma lógica y verificación automática de cada resultado:
 
-\vspace{0.5em}
+\vspace{0.6em}
 \begin{center}
-\begin{tabular}{lll}
-\toprule
-\textbf{Versión} & \textbf{Técnica} & \textbf{Basada en} \\
-\midrule
-Serial & una tupla a la vez & Volcano (1994) \\
-CPU paralela & OpenMP, \textit{morsels} & HyPer (SIGMOD 2014) \\
-GPU & CUDA, \textit{tiles} & Crystal (SIGMOD 2020) \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\vspace{0.8em}
-\begin{center}
-\begin{tikzpicture}[caja/.style={draw=azul, line width=2pt, rounded corners=6pt, minimum width=7.5cm, minimum height=2.2cm, align=center, fill=white},
-                    flecha/.style={-{Latex[length=5mm]}, line width=3pt, draw=azul}]
-\node[caja] (gen) {Datos TPC-H\\(generados con DuckDB)};
-\node[caja, right=2cm of gen] (col) {Columnas binarias\\en memoria};
-\node[caja, below=1.5cm of col, fill=azul!10] (omp) {OpenMP};
-\node[caja, left=1cm of omp, fill=black!5] (ser) {Serial};
-\node[caja, right=1cm of omp, fill=verde!15] (gpu) {CUDA};
-\node[caja, below=1.5cm of omp] (val) {Resultado idéntico\\al de DuckDB};
+\begin{tikzpicture}
+\node[caja] (gen) {Datos TPC-H\\{\small generados con DuckDB}};
+\node[caja, right=1.6cm of gen] (col) {Columnas binarias\\{\small enteros en memoria}};
+\node[caja, below=1.6cm of col, xshift=-6.2cm, fill=gris!15] (ser) {Serial\\{\small Volcano}};
+\node[caja, right=0.8cm of ser, fill=azul!12] (omp) {OpenMP\\{\small morsels}};
+\node[caja, right=0.8cm of omp, fill=verde!15] (gpu) {CUDA\\{\small tiles}};
+\node[caja, below=1.6cm of omp] (val) {Resultado idéntico al de DuckDB\\{\small 385 de 385 mediciones}};
 \draw[flecha] (gen) -- (col);
-\draw[flecha] (col) -- (ser); \draw[flecha] (col) -- (omp); \draw[flecha] (col) -- (gpu);
-\draw[flecha] (ser) -- (val); \draw[flecha] (omp) -- (val); \draw[flecha] (gpu) -- (val);
+\foreach \b in {ser, omp, gpu} { \draw[flecha] (col.south) -- (\b.north); \draw[flecha] (\b.south) -- (val.north); }
 \end{tikzpicture}
 \end{center}
 }
 
-\block{Consultas del benchmark TPC-H}{
-Cada una estresa una parte distinta del hardware:
+\block{Consultas de TPC-H}{
+TPC-H es el benchmark estándar de bases de datos analíticas. Elegimos tres de sus 22 consultas, una por cada tipo de cuello de botella:
+
+\vspace{0.4em}
 \begin{itemize}
-\item \textbf{Q6, filtro + suma:} recorre toda la tabla y suma el 2\,\% de las filas. Mide el ancho de banda de memoria.
-\item \textbf{Q1, agregación:} acumula 300 millones de filas en solo 4 grupos. Mide la contención entre hilos.
-\item \textbf{Q3, join:} cruza clientes, pedidos y líneas con una tabla hash. Mide los accesos aleatorios.
+\item \dato{Q6:} filtra toda la tabla y suma el 2\,\% de las filas. \textit{Mide el ancho de banda de memoria.}
+\item \dato{Q1:} agrega 300 millones de filas en 4 grupos. \textit{Mide la contención entre hilos.}
+\item \dato{Q3:} cruza clientes, pedidos y líneas con una tabla hash. \textit{Mide los accesos aleatorios.}
 \end{itemize}
-SF 10 = 60 millones de filas; SF 50 = 300 millones.
-}
 
-\block{Trabajo futuro}{
-\begin{itemize}
-\item Copias por PCIe desde memoria fijada (\textit{pinned}).
-\item Agregación por warp en Q1 para reducir la contención.
-\item Llevar el backend GPU a HIP para las AMD MI210 del SC3.
-\end{itemize}
-}
-
-% Columna 2: hallazgo principal
-\column{0.37}
-
-\block{Hallazgo: la GPU no gana siempre}{
-\begin{center}
-\figura{../resultados/graficas/central.pdf}{0.97\linewidth}
-\end{center}
-\begin{itemize}
-\item \textbf{Con los datos ya en la GPU}, la T4 iguala a 128 núcleos de CPU en Q6 y les gana por poco (1,2 veces) en el join (Q3).
-\item \textbf{Si hay que copiar los datos por PCIe}, la GPU pierde en las tres consultas: la copia tarda hasta 100 veces más que el cálculo.
-\item \textbf{En la agregación (Q1)} gana la CPU por 12 veces: miles de hilos de la GPU compiten por los mismos 4 acumuladores.
-\end{itemize}
-}
-
-\block{Conclusión}{
-La GPU compensa cuando los datos \textbf{ya viven en su memoria} y la consulta hace \textbf{mucho trabajo por byte}, como un join.
-Para filtrar y agregar, una CPU moderna con muchos núcleos alcanza el mismo límite físico: el ancho de banda de memoria.
+\vspace{0.4em}
+{\small SF 10: 60 millones de filas. SF 50: 300 millones.}
 }
 
 \block{Plataformas}{
 \begin{itemize}
-\item \textbf{CPU:} nodo \texttt{smexa} del SC3-UIS, 2 AMD EPYC 9534 (128 núcleos, 2 nodos NUMA).
-\item \textbf{GPU:} NVIDIA T4 (Google Colab) y GTX Titan X (nodo \texttt{felix} del SC3-UIS).
+\item \dato{CPU:} nodo \texttt{smexa} del SC3-UIS, 2 AMD EPYC 9534 (128 núcleos, 2 nodos NUMA).
+\item \dato{GPU:} NVIDIA T4 (Google Colab) y GTX Titan X (nodo \texttt{felix} del SC3-UIS).
 \end{itemize}
 }
 
-\block{Referencia: DuckDB en la misma máquina}{
-Con los mismos datos y tipos, nuestro motor es 1,5 veces más rápido que DuckDB en el join y unas 5 veces en el filtro y la agregación, gracias a especializar cada consulta.
+\block{Dimensionamiento}{
+\begin{itemize}
+\item \textbf{Alcance:} 3 consultas y no las 22, una por cuello de botella; sin parser SQL ni optimizador.
+\item \textbf{Datos:} SF 50 en CPU y SF 10 en GPU (cabe en sus 15 GB); por eso se comparan filas por segundo.
+\item \textbf{Clúster:} cuota de 1 GB y jobs de 1 hora; los datos se cargaron en el disco en RAM de cada nodo.
+\end{itemize}
 }
 
-% Columna 3: análisis
-\column{0.33}
+%%%%%%%%%%%%%%%% Columna 2: de serial a paralelo %%%%%%%%%%%%%%%%
+\column{0.37}
+
+\block{De serial a paralelo}{
+
+\innerblock{1. Serial: modelo Volcano (Graefe, 1994)}{
+\begin{minipage}[c]{0.34\linewidth}
+\centering
+\begin{tikzpicture}[node distance=1.1cm]
+\node[caja, minimum width=7cm] (agg) {Agregación};
+\node[caja, minimum width=7cm, below=of agg] (fil) {Filtro};
+\node[caja, minimum width=7cm, below=of fil] (scan) {Scan \texttt{lineitem}};
+\draw[flecha] (scan) -- node[right, font=\small] {1 fila} (fil);
+\draw[flecha] (fil) -- node[right, font=\small] {1 fila} (agg);
+\end{tikzpicture}
+\end{minipage}%
+\hspace{0.03\linewidth}%
+\begin{minipage}[c]{0.62\linewidth}
+Cada operador pide la siguiente fila a su hijo con una llamada \texttt{next()} virtual. Es el modelo clásico de los motores de bases de datos y nuestra línea base: un hilo, una fila a la vez.
+
+\vspace{0.4em}
+\dato{Costo:} una llamada indirecta por fila y por operador.
+\end{minipage}
+}
+
+\vspace{0.8em}
+\innerblock{2. CPU paralela: morsels con OpenMP (Leis et al., SIGMOD 2014)}{
+\centering
+\begin{tikzpicture}
+\foreach \i in {0,...,11} { \pgfmathsetmacro{\tono}{10+6*\i} \draw[draw=marino, line width=1.5pt, fill=azul!\tono] (\i*1.9, 0) rectangle ++(1.9, 1.4); }
+\node[above=2mm, font=\small] at (11.4, 1.4) {tabla dividida en morsels de 65\,536 filas};
+\foreach \h/\x in {1/1.5, 2/7.4, 3/13.3, 4/19.2} {
+  \node[caja, minimum width=4.8cm] (h\h) at (\x, -3.4) {Hilo \h\\{\small estado propio}};
+  \draw[flecha] (\x, -0.1) -- (h\h.north);
+}
+\node[caja, fill=azul!15, minimum width=14cm] (comb) at (10.4, -7) {Combinar una sola vez al final};
+\foreach \h in {1,...,4} { \draw[flecha] (h\h.south) -- (comb.north -| h\h.south); }
+\end{tikzpicture}
+
+\raggedright
+\vspace{0.5em}
+\begin{itemize}
+\item Los hilos toman morsels de forma dinámica (\texttt{schedule(dynamic)}): ninguno queda ocioso si otro va lento.
+\item Q6 y Q1: sumas y grupos locales por hilo, sin ramas y vectorizados por el compilador; cero atómicos compartidos.
+\item Q3: tabla hash de direccionamiento abierto, construida por todos los hilos a la vez con \texttt{compare\_exchange}, e inicializada en paralelo para repartirla entre los dos sockets.
+\end{itemize}
+}
+
+\vspace{0.8em}
+\innerblock{3. GPU: tiles con CUDA (Shanbhag et al., SIGMOD 2020)}{
+\centering
+\begin{tikzpicture}
+\node[caja] (ram) at (2.5, 0) {Memoria de la CPU};
+\node[caja, fill=verde!10] (vram) at (17.5, 0) {Memoria de la GPU};
+\draw[flecha] (ram) -- node[above, font=\small] {copia por PCIe} (vram);
+\foreach \b in {0,...,3} {
+  \node[draw=verde, line width=2pt, rounded corners=4pt, minimum width=5cm, minimum height=3.2cm, fill=white] (b\b) at (2.3+\b*5.8, -4.2) {};
+  \node[font=\small, anchor=north, align=center] at (b\b.north) {Bloque \b: 512 filas\\128 hilos};
+  \foreach \t in {0,...,7} { \draw[draw=verde, fill=verde!35] ($(b\b.south west)+(0.35+\t*0.56, 0.4)$) rectangle ++(0.42, 1.1); }
+}
+\node[caja, fill=verde!15, minimum width=21cm] (sum) at (11, -8.4) {Reducción en memoria compartida y \textbf{un} atómico global por bloque};
+\foreach \b in {0,...,3} { \draw[flecha] (b\b.south) -- (sum.north -| b\b.south); }
+\draw[flecha] (vram.south) -- (b3.north);
+\end{tikzpicture}
+
+\raggedright
+\vspace{0.5em}
+\begin{itemize}
+\item Los filtros se evalúan como máscaras en registros; solo se leen las columnas de las filas que siguen vivas.
+\item Q1: acumular en memoria compartida evita que miles de hilos escriban en las mismas 24 direcciones.
+\item Q3: la tabla hash vive en la memoria de la GPU y se construye con \texttt{atomicCAS}.
+\end{itemize}
+}
+}
+
+\block{Lo que aprendimos}{
+\begin{itemize}
+\item La GPU compensa cuando los datos \textbf{ya viven en su memoria} y la consulta hace mucho trabajo por byte.
+\item Antes de agregar hilos hay que saber \textbf{qué limita}: en Q6 era la memoria, no el cómputo.
+\item Una inicialización serial y la memoria en un solo socket frenaban a Q3 (Amdahl y NUMA).
+\end{itemize}
+\textbf{Trabajo futuro:} copias desde memoria fijada, agregación por warp en Q1 y llevar la GPU a HIP para las AMD MI210 del SC3.
+}
+
+%%%%%%%%%%%%%%%% Columna 3: resultados %%%%%%%%%%%%%%%%
+\column{0.36}
+
+\block{Resultado: la GPU no gana siempre}{
+\begin{center}
+\figura{../resultados/graficas/central.pdf}{0.9\linewidth}
+\end{center}
+\begin{itemize}
+\item \textbf{Con los datos ya en la GPU}, la T4 iguala a 128 núcleos en Q6 y les gana por 1,2 veces en el join.
+\item \textbf{Copiando por PCIe}, la GPU pierde en las tres: la copia tarda hasta 100 veces más que el cálculo.
+\item \textbf{En la agregación} gana la CPU por 12 veces, por la contención de atómicos en la GPU.
+\end{itemize}
+}
 
 \block{Escalado en CPU: el límite es la memoria}{
 \begin{center}
 \figura{../resultados/graficas/escalado.pdf}{\linewidth}
 \end{center}
 \begin{itemize}
-\item \textbf{Q1 y Q3} escalan casi ideal hasta 32 hilos. Q3 llega a 52 veces con 128 hilos tras repartir su tabla hash entre los dos sockets (antes se estancaba en 29).
-\item \textbf{Q6} sube por escalones: cada 8 núcleos comparten un enlace a memoria, y con 64 hilos ya lee a la velocidad máxima de un socket.
-\item \textbf{NUMA:} repartir la memoria entre los dos sockets hace a Q6 1,5 veces más rápida con 128 hilos.
+\item \textbf{Q1 y Q3} escalan casi ideal hasta 32 hilos; Q3 llega a 52 veces con 128 hilos.
+\item \textbf{Q6} sube por escalones: cada 8 núcleos comparten un enlace a memoria, y con 64 hilos ya lee al máximo de un socket.
+\item \textbf{NUMA:} intercalar la memoria entre sockets hace a Q6 1,5 veces más rápida con 128 hilos.
 \end{itemize}
 }
 
-\block{Contención en GPU (Q1)}{
-\begin{center}
-\figura{../resultados/graficas/contencion.pdf}{0.62\linewidth}
-\end{center}
-Acumular primero en la memoria compartida de cada bloque evita que todos los hilos escriban en las mismas direcciones globales: 9,4 veces más rápido en la T4 y 3,3 veces en la Titan X, que emula los atómicos de 64 bits en memoria compartida.
+\block{Contención en GPU y referencia}{
+\begin{minipage}[c]{0.44\linewidth}
+\figura{../resultados/graficas/contencion.pdf}{\linewidth}
+\end{minipage}%
+\hspace{0.03\linewidth}%
+\begin{minipage}[c]{0.53\linewidth}
+Acumular por bloque hace a Q1 \dato{9,4 veces} más rápida en la T4.
+
+\vspace{0.6em}
+Frente a \dato{DuckDB}, en la misma máquina y con los mismos tipos, nuestro motor es 1,5 veces más rápido en el join y unas 5 veces en el filtro y la agregación.
+\end{minipage}
 }
 
 \end{columns}

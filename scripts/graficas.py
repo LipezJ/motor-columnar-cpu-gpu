@@ -78,7 +78,7 @@ def central(m: dict, salida: Path):
         ("GPU T4, datos ya en la GPU", COLOR["gpu"], lambda q: m.get(("T4", "cuda", q, 1), (0, 0, None))[2], "10"),
         ("GPU T4, copiando por PCIe", COLOR["pcie"], lambda q: m.get(("T4", "cuda", q, 1), (None,))[0], "10"),
     ]
-    fig, ax = plt.subplots(figsize=(12, 6.5))
+    fig, ax = plt.subplots(figsize=(12, 5))
     ancho = 0.2
     for i, (nombre, color, tiempo, sf) in enumerate(series):
         for j, q in enumerate(CONSULTAS):
@@ -101,7 +101,7 @@ def escalado(m: dict, salida: Path):
     if not any(k[0] == "smexa" and k[1] == "omp" for k in m):
         print("  (sin datos de smexa: se omite escalado)")
         return
-    fig, (izq, der) = plt.subplots(1, 2, figsize=(16, 6.5))
+    fig, (izq, der) = plt.subplots(1, 2, figsize=(16, 5.6))
     for maq, etiqueta, estilo in corridas:
         for q in CONSULTAS:
             puntos = sorted((h, v[0]) for (mq, b, c, h), v in m.items() if mq == maq and b == "omp" and c == q)
@@ -124,13 +124,14 @@ def escalado(m: dict, salida: Path):
     izq.set_yticks([1, 2, 4, 8, 16, 32, 64, 128], ["1", "2", "4", "8", "16", "32", "64", "128"])
     izq.set_ylabel("Speedup respecto a 1 hilo")
     der.set_yscale("log", base=2)
-    der.set_yticks([16, 32, 64, 128, 256, 512, 1024], ["16", "32", "64", "128", "256", "512", "1024"])
+    der.set_yticks([4, 8, 16, 32, 64, 128, 256, 512, 1024], ["4", "8", "16", "32", "64", "128", "256", "512", "1024"])
     der.set_ylabel("Ancho de banda leído (GB/s)")
     # Una sola leyenda: el color es la consulta y el trazo la colocación de la memoria.
     leyenda = [Line2D([], [], color=COLOR[q], lw=3, label=NOMBRE[q]) for q in CONSULTAS]
     leyenda += [Line2D([], [], color="black", ls=e, lw=2, label=et) for _, et, e in corridas]
     leyenda.append(Line2D([], [], color="black", ls=":", lw=1.5, label="ideal (1 hilo por núcleo)"))
-    fig.legend(handles=leyenda, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3)
+    fig.legend(handles=leyenda, frameon=False, loc="upper center", ncol=3)
+    fig.tight_layout(rect=(0, 0, 1, 0.88))
     for gbs, texto in [(PICO_SOCKET_GBS, "pico de 1 socket"), (2 * PICO_SOCKET_GBS, "pico de 2 sockets")]:
         der.axhline(gbs, color="black", ls=":", lw=1.5)
         der.text(1, gbs * 1.05, texto, fontsize=13)
@@ -142,7 +143,7 @@ def contencion(m: dict, salida: Path):
     if not gpus:
         print("  (sin cuda-ingenuo: se omite contencion)")
         return
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(8, 5))
     ancho = 0.35
     for i, (backend, nombre, color) in enumerate([("cuda", "Agregación por bloque (memoria compartida)", COLOR["gpu"]),
                                                   ("cuda-ingenuo", "Un atómico global por fila", COLOR["ingenuo"])]):
@@ -152,7 +153,7 @@ def contencion(m: dict, salida: Path):
             ax.bar(x, ms, ancho, color=color, label=nombre if j == 0 else None)
             ax.text(x, ms * 1.02, f"{ms:.0f}", ha="center", fontsize=14)
     ax.set_xticks(range(len(gpus)), gpus)
-    ax.set_ylabel("Cómputo de Q1 en GPU (ms, SF 10)")
+    ax.set_ylabel("Q1 en GPU, ms (SF 10)")
     ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=13)
     guardar(fig, salida, "contencion")
 
