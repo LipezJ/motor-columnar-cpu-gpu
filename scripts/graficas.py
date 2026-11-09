@@ -73,7 +73,7 @@ def central(m: dict, salida: Path):
         return min(tiempos) if tiempos else None
 
     series = [
-        ("1 núcleo CPU (serial)", COLOR["serial"], lambda q: m.get(("smexa", "serial", q, 1), (None,))[0], "50"),
+        ("1 núcleo CPU (serial, Volcano)", COLOR["serial"], lambda q: m.get(("smexa", "serial", q, 1), (None,))[0], "50"),
         ("2 AMD EPYC, 128 núcleos (OpenMP)", COLOR["cpu"], mejor_cpu, "50"),
         ("GPU T4, datos ya en la GPU", COLOR["gpu"], lambda q: m.get(("T4", "cuda", q, 1), (0, 0, None))[2], "10"),
         ("GPU T4, copiando por PCIe", COLOR["pcie"], lambda q: m.get(("T4", "cuda", q, 1), (None,))[0], "10"),
