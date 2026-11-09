@@ -18,6 +18,10 @@
 
 \usetheme{Simple}
 \usetitlestyle{Filled}
+% Título en negrita normal: el tema lo pone en versalitas.
+\makeatletter
+\settitle{\centering\vbox{\color{titlefgcolor}{\bfseries\Huge\@title\par}\vspace*{0.8em}{\LARGE\@author\par}\vspace*{0.6em}{\large\@institute}}}
+\makeatother
 \colorlet{backgroundcolor}{fondo}
 \colorlet{framecolor}{azul}
 \colorlet{titlefgcolor}{white}
@@ -30,7 +34,7 @@
 \newcommand{\figura}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}{\fbox{\parbox{#2}{\centering\vspace{4cm}Falta #1\vspace{4cm}}}}}
 
 \title{¿Cuándo compensa la GPU para consultas analíticas?}
-\author{Juan David Lipez \quad INTEGRANTE 2 \quad INTEGRANTE 3}
+\author{Janer Alberto Vega Jácome (2210048) \quad Juan David Lipez Guevara (2223102) \quad Juan David Mena Gamboa (2221886) \quad Camilo Carvajal Castro (2190187)}
 \institute{Programación Paralela, grupo 1 \quad Escuela de Ingeniería de Sistemas e Informática, Universidad Industrial de Santander\\[0.3em] Profesores: Carlos Jaime Barrios Hernández y Sergio Augusto Gélvez Cortés}
 
 \begin{document}
