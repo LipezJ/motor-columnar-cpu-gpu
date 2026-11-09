@@ -7,6 +7,7 @@ y data/sf{SF}/esperado/q{1,3,6}.csv con el formato que imprime el motor.
 """
 
 import argparse
+import shutil
 from pathlib import Path
 
 import duckdb
@@ -87,11 +88,20 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("sf", type=float, help="factor de escala de TPC-H (SF 1 son unos 6 M de filas de lineitem)")
     p.add_argument("--salida", default="data")
+    p.add_argument("--memoria", default="4GB", help="memory_limit de DuckDB; lo que no cabe se vuelca a disco")
     args = p.parse_args()
 
     sf_txt = f"{args.sf:g}"
-    raiz = Path(args.salida) / f"sf{sf_txt}"
-    con = duckdb.connect()
+    final = Path(args.salida) / f"sf{sf_txt}"
+    # Se escribe en un directorio temporal y se renombra al final.
+    # Así una generación interrumpida no deja un data/sfN a medias que el notebook y el job de SLURM den por bueno.
+    raiz = Path(args.salida) / f"sf{sf_txt}.tmp"
+    shutil.rmtree(raiz, ignore_errors=True)
+    raiz.mkdir(parents=True)
+    # Base de datos en disco y no en memoria: con memory_limit DuckDB vuelca a disco en vez de agotar la RAM
+    # (en memoria, SF 10 no cabe en los 12,7 GB de un entorno estándar de Colab).
+    con = duckdb.connect(str(raiz / "tpch.duckdb"))
+    con.execute(f"SET memory_limit = '{args.memoria}'")
     con.execute("INSTALL tpch; LOAD tpch;")
     print(f"Generando TPC-H SF={sf_txt}")
     con.execute(f"CALL dbgen(sf={args.sf})")
@@ -106,7 +116,11 @@ def main():
     (raiz / "esperado").mkdir(exist_ok=True)
     for q, sql in ESPERADO.items():
         con.execute(f"COPY ({sql}) TO '{raiz / 'esperado' / (q + '.csv')}' (HEADER)")
-    print(f"Listo: {raiz}")
+    con.close()
+    (raiz / "tpch.duckdb").unlink()
+    shutil.rmtree(final, ignore_errors=True)
+    raiz.rename(final)
+    print(f"Listo: {final}")
 
 
 if __name__ == "__main__":
