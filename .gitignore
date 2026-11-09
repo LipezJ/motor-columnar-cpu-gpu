@@ -9,3 +9,4 @@ __pycache__/
 .venv/
 motor-bench-*.log
 build-*/
+poster/*.pdf

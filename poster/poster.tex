@@ -1,0 +1,155 @@
+% Póster digital del proyecto final. Compilar desde esta carpeta: tectonic poster.tex
+% Las figuras salen de scripts/graficas.py (resultados/graficas/*.pdf).
+\documentclass[25pt, a0paper, landscape, margin=0mm, innermargin=15mm, blockverticalspace=12mm, colspace=15mm]{tikzposter}
+
+\usepackage[spanish, es-noshorthands]{babel}
+\usepackage{fontspec}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usetikzlibrary{positioning, arrows.meta}
+\renewcommand{\familydefault}{\sfdefault}
+\tikzposterlatexaffectionproofoff
+
+\definecolor{azul}{HTML}{0072B2}
+\definecolor{verde}{HTML}{009E73}
+\definecolor{naranja}{HTML}{E69F00}
+\definecolor{fondo}{HTML}{F4F6F8}
+\definecolor{tinta}{HTML}{1F2933}
+
+\usetheme{Simple}
+\usetitlestyle{Filled}
+\colorlet{backgroundcolor}{fondo}
+\colorlet{framecolor}{azul}
+\colorlet{titlefgcolor}{white}
+\colorlet{titlebgcolor}{azul}
+\colorlet{blocktitlebgcolor}{white}
+\colorlet{blocktitlefgcolor}{azul}
+\colorlet{blockbodybgcolor}{white}
+\colorlet{blockbodyfgcolor}{tinta}
+
+\newcommand{\figura}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}{\fbox{\parbox{#2}{\centering\vspace{4cm}Falta #1\vspace{4cm}}}}}
+
+\title{¿Cuándo compensa la GPU para consultas analíticas?}
+\author{Juan David Lipez \quad INTEGRANTE 2 \quad INTEGRANTE 3}
+\institute{Programación Paralela, grupo 1 \quad Escuela de Ingeniería de Sistemas e Informática, Universidad Industrial de Santander\\[0.3em] Profesores: Carlos Jaime Barrios Hernández y Sergio Augusto Gélvez Cortés}
+
+\begin{document}
+\maketitle
+
+\begin{columns}
+
+% Columna 1: problema y método
+\column{0.3}
+
+\block{La pregunta}{
+Las GPU dominan el entrenamiento de modelos de IA.
+¿Ganan también en el trabajo diario de una base de datos analítica: filtrar, agregar y cruzar tablas de cientos de millones de filas?
+
+\vspace{0.5em}
+\textbf{Objetivo:} medir, con el mismo motor y los mismos datos, cuándo compensa cada arquitectura (un núcleo, una CPU de muchos núcleos o una GPU) y qué la limita.
+}
+
+\block{Qué construimos}{
+Un motor de consultas columnar en C++ y CUDA, en tres versiones con la misma lógica:
+
+\vspace{0.5em}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Versión} & \textbf{Técnica} & \textbf{Basada en} \\
+\midrule
+Serial & una tupla a la vez & Volcano (1994) \\
+CPU paralela & OpenMP, \textit{morsels} & HyPer (SIGMOD 2014) \\
+GPU & CUDA, \textit{tiles} & Crystal (SIGMOD 2020) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.8em}
+\begin{center}
+\begin{tikzpicture}[caja/.style={draw=azul, line width=2pt, rounded corners=6pt, minimum width=7.5cm, minimum height=2.2cm, align=center, fill=white},
+                    flecha/.style={-{Latex[length=5mm]}, line width=3pt, draw=azul}]
+\node[caja] (gen) {Datos TPC-H\\(generados con DuckDB)};
+\node[caja, right=2cm of gen] (col) {Columnas binarias\\en memoria};
+\node[caja, below=1.5cm of col, fill=azul!10] (omp) {OpenMP};
+\node[caja, left=1cm of omp, fill=black!5] (ser) {Serial};
+\node[caja, right=1cm of omp, fill=verde!15] (gpu) {CUDA};
+\node[caja, below=1.5cm of omp] (val) {Resultado idéntico\\al de DuckDB};
+\draw[flecha] (gen) -- (col);
+\draw[flecha] (col) -- (ser); \draw[flecha] (col) -- (omp); \draw[flecha] (col) -- (gpu);
+\draw[flecha] (ser) -- (val); \draw[flecha] (omp) -- (val); \draw[flecha] (gpu) -- (val);
+\end{tikzpicture}
+\end{center}
+}
+
+\block{Consultas del benchmark TPC-H}{
+Cada una estresa una parte distinta del hardware:
+\begin{itemize}
+\item \textbf{Q6, filtro + suma:} recorre toda la tabla y suma el 2\,\% de las filas. Mide el ancho de banda de memoria.
+\item \textbf{Q1, agregación:} acumula 300 millones de filas en solo 4 grupos. Mide la contención entre hilos.
+\item \textbf{Q3, join:} cruza clientes, pedidos y líneas con una tabla hash. Mide los accesos aleatorios.
+\end{itemize}
+SF 10 = 60 millones de filas; SF 50 = 300 millones.
+}
+
+% Columna 2: hallazgo principal
+\column{0.37}
+
+\block{Hallazgo: la GPU no gana siempre}{
+\begin{center}
+\figura{../resultados/graficas/central.pdf}{0.97\linewidth}
+\end{center}
+\begin{itemize}
+\item \textbf{Con los datos ya en la GPU}, la T4 iguala a 128 núcleos de CPU en Q6 y les gana 2 veces en el join (Q3).
+\item \textbf{Si hay que copiar los datos por PCIe}, la GPU pierde en las tres consultas: la copia tarda hasta 100 veces más que el cálculo.
+\item \textbf{En la agregación (Q1)} gana la CPU por 11 veces: miles de hilos de la GPU compiten por los mismos 4 acumuladores.
+\end{itemize}
+}
+
+\block{Conclusión}{
+La GPU compensa cuando los datos \textbf{ya viven en su memoria} y la consulta hace \textbf{mucho trabajo por byte}, como un join.
+Para filtrar y agregar, una CPU moderna con muchos núcleos alcanza el mismo límite físico: el ancho de banda de memoria.
+}
+
+\block{Plataformas}{
+\begin{itemize}
+\item \textbf{CPU:} nodo \texttt{smexa} del SC3-UIS, 2 AMD EPYC 9534 (128 núcleos, 2 nodos NUMA).
+\item \textbf{GPU:} NVIDIA T4 (Google Colab) y GTX Titan X (nodo \texttt{felix} del SC3-UIS).
+\end{itemize}
+}
+
+\block{Referencia: DuckDB en la misma máquina}{
+Con los mismos datos y tipos, nuestro motor es 1,5 veces más rápido que DuckDB en el join y unas 5 veces en el filtro y la agregación, gracias a especializar cada consulta.
+}
+
+% Columna 3: análisis
+\column{0.33}
+
+\block{Escalado en CPU: el límite es la memoria}{
+\begin{center}
+\figura{../resultados/graficas/escalado.pdf}{\linewidth}
+\end{center}
+\begin{itemize}
+\item \textbf{Q1 y Q3} escalan casi ideal hasta 32 hilos.
+\item \textbf{Q6} sube por escalones: cada 8 núcleos comparten un enlace a memoria, y con 64 hilos ya lee a la velocidad máxima de un socket.
+\item \textbf{NUMA:} repartir la memoria entre los dos sockets hace a Q6 1,5 veces más rápida con 128 hilos.
+\end{itemize}
+}
+
+\block{Contención en GPU (Q1)}{
+\begin{center}
+\figura{../resultados/graficas/contencion.pdf}{0.75\linewidth}
+\end{center}
+Acumular primero en la memoria compartida de cada bloque evita que todos los hilos escriban en las mismas direcciones globales.
+}
+
+\block{Trabajo futuro}{
+\begin{itemize}
+\item Copias por PCIe desde memoria fijada (\textit{pinned}).
+\item Agregación por warp en Q1 para reducir la contención.
+\item Llevar el backend GPU a HIP para las AMD MI210 del SC3.
+\end{itemize}
+}
+
+\end{columns}
+\end{document}
