@@ -26,14 +26,22 @@ export OMP_PROC_BIND=close OMP_PLACES=cores
 
 make clean BUILD=build-cpu
 make BUILD=build-cpu
-test -f "data/sf$SF/esperado/q6.csv" || "$PYTHON" scripts/gen_datos.py "$SF"
+# Datos en el /tmp del nodo: es tmpfs y persiste entre jobs.
+# El home tiene cuota de 1 GB y /mnt/san/scratch no admite escritura de estudiantes.
+# Se cargan una vez desde guane, con el .tar.zst que genera el Mac:
+#   srun -p amd -w smexa sh -c 'mkdir -p /tmp/$USER && zstd -dc | tar -xf - -C /tmp/$USER' < sf50.tar.zst
+DATOS=${DATOS:-/tmp/$USER}
+if [ ! -f "$DATOS/sf$SF/esperado/q6.csv" ]; then
+  echo "Faltan los datos en $DATOS/sf$SF de $(hostname)" >&2
+  exit 1
+fi
 
-"$PYTHON" scripts/bench.py --motor build-cpu/motor --datos "data/sf$SF" --backends serial,omp --maquina smexa --etiqueta "smexa-sf$SF"
+"$PYTHON" scripts/bench.py --motor build-cpu/motor --datos "$DATOS/sf$SF" --backends serial,omp --maquina smexa --etiqueta "smexa-sf$SF"
 
 # Misma corrida con las páginas repartidas entre los dos nodos NUMA (numactl hereda la política al motor).
 # Compara contra la anterior el coste de que todos los datos vivan en un solo socket.
 if command -v numactl >/dev/null; then
-  numactl --interleave=all "$PYTHON" scripts/bench.py --motor build-cpu/motor --datos "data/sf$SF" --backends omp \
+  numactl --interleave=all "$PYTHON" scripts/bench.py --motor build-cpu/motor --datos "$DATOS/sf$SF" --backends omp \
     --maquina smexa-interleave --etiqueta "smexa-interleave-sf$SF"
 else
   echo "numactl no está instalado en $(hostname): se omite la corrida con memoria intercalada"

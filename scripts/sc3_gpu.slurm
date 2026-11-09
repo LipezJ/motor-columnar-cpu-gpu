@@ -32,6 +32,14 @@ fi
 
 make clean BUILD=build-gpu
 make BUILD=build-gpu CUDA=1 CUDA_ARCH=sm_52 CXX="$GXX" NVCC="nvcc -ccbin $GXX"
-test -f "data/sf$SF/esperado/q6.csv" || "$PYTHON" scripts/gen_datos.py "$SF"
+# Datos en el /tmp del nodo: es tmpfs y persiste entre jobs.
+# El home tiene cuota de 1 GB y /mnt/san/scratch no admite escritura de estudiantes.
+# Se cargan una vez desde guane, con el .tar.zst que genera el Mac:
+#   srun -p gpu_titan -w felix sh -c 'mkdir -p /tmp/$USER && zstd -dc | tar -xf - -C /tmp/$USER' < sf10.tar.zst
+DATOS=${DATOS:-/tmp/$USER}
+if [ ! -f "$DATOS/sf$SF/esperado/q6.csv" ]; then
+  echo "Faltan los datos en $DATOS/sf$SF de $(hostname)" >&2
+  exit 1
+fi
 
-"$PYTHON" scripts/bench.py --motor build-gpu/motor --datos "data/sf$SF" --backends cuda --maquina TitanX --etiqueta "TitanX-sf$SF"
+"$PYTHON" scripts/bench.py --motor build-gpu/motor --datos "$DATOS/sf$SF" --backends cuda --maquina TitanX --etiqueta "TitanX-sf$SF"
