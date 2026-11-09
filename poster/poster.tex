@@ -178,11 +178,11 @@ Cada operador pide la siguiente fila a su hijo con una llamada \texttt{next()} v
 \begin{tikzpicture}
 \foreach \i in {0,...,11} { \pgfmathsetmacro{\tono}{10+6*\i} \draw[draw=marino, line width=1.5pt, fill=azul!\tono] (\i*1.9, 0) rectangle ++(1.9, 1.4); }
 \node[above=2mm, font=\small] at (11.4, 1.4) {tabla dividida en morsels de 65\,536 filas};
-\foreach \h/\x in {1/1.5, 2/7.4, 3/13.3, 4/19.2} {
+\foreach \h/\x in {1/2.85, 2/8.55, 3/14.25, 4/19.95} {
   \node[caja, minimum width=4.8cm] (h\h) at (\x, -3.4) {Hilo \h\\{\small estado propio}};
   \draw[flecha] (\x, -0.1) -- (h\h.north);
 }
-\node[caja, fill=azul!15, minimum width=14cm] (comb) at (10.4, -7) {Combinar una sola vez al final};
+\node[caja, fill=azul!15, minimum width=22cm] (comb) at (11.4, -7) {Combinar una sola vez al final};
 \foreach \h in {1,...,4} { \draw[flecha] (h\h.south) -- (comb.north -| h\h.south); }
 \end{tikzpicture}
 
