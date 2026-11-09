@@ -45,4 +45,4 @@ if [ ! -f "$DATOS/sf$SF/esperado/q6.csv" ]; then
   exit 1
 fi
 
-"$PYTHON" scripts/bench.py --motor build-gpu/motor --datos "$DATOS/sf$SF" --backends cuda --maquina TitanX --etiqueta "TitanX-sf$SF"
+"$PYTHON" scripts/bench.py --motor build-gpu/motor --datos "$DATOS/sf$SF" --backends cuda,cuda-ingenuo --maquina TitanX --etiqueta "TitanX-sf$SF"

@@ -45,10 +45,13 @@ def hilos_por_defecto() -> str:
 
 def correr(motor, datos, backend, consulta, hilos, reps):
     """Devuelve (filas de tiempos como dicts, errores); errores vacío si la salida coincide con DuckDB."""
+    entorno = os.environ.copy()
+    if backend == "cuda-ingenuo":
+        backend, entorno["MOTOR_Q1_INGENUO"] = "cuda", "1"
     cmd = [str(motor), str(datos), backend, consulta, "--reps", str(reps)]
     if backend == "omp":
         cmd += ["--hilos", str(hilos)]
-    p = subprocess.run(cmd, capture_output=True, text=True)
+    p = subprocess.run(cmd, capture_output=True, text=True, env=entorno)
     lineas = p.stderr.splitlines()
     # main.cpp mezcla en stderr los tiempos en CSV con los mensajes de error; solo las filas numéricas son tiempos.
     tiempos = [l for l in lineas if re.fullmatch(r"\d+,\d+,[\d.]+,[\d.]+,[\d.]+", l)]
@@ -63,7 +66,8 @@ def correr(motor, datos, backend, consulta, hilos, reps):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--datos", default="data/sf10", help="directorio de gen_datos.py (data/sfN)")
-    p.add_argument("--backends", default="serial,omp,cuda")
+    p.add_argument("--backends", default="serial,omp,cuda",
+                   help="serial, omp, cuda y cuda-ingenuo (Q1 en GPU con un atómico global por fila; solo se mide en q1)")
     p.add_argument("--consultas", default="q1,q3,q6")
     p.add_argument("--hilos", default=hilos_por_defecto(),
                    help="lista de hilos para omp; serial y cuda corren siempre con 1 (por defecto, potencias de 2 hasta los núcleos disponibles)")
@@ -85,6 +89,8 @@ def main():
         w.writeheader()
         for backend in args.backends.split(","):
             for consulta in args.consultas.split(","):
+                if backend == "cuda-ingenuo" and consulta != "q1":
+                    continue
                 for hilos in (args.hilos.split(",") if backend == "omp" else ["1"]):
                     filas, errores = correr(args.motor, args.datos, backend, consulta, hilos, args.reps)
                     base = {"maquina": args.maquina, "sf": sf, "backend": backend, "consulta": consulta,
@@ -101,9 +107,9 @@ def main():
                     if medidas:
                         medianas.append((backend, consulta, hilos, statistics.median(medidas), not errores))
 
-    print(f"{'backend':8} {'consulta':8} {'hilos':>5} {'mediana_ms':>12}  válido")
+    print(f"{'backend':12} {'consulta':8} {'hilos':>5} {'mediana_ms':>12}  válido")
     for backend, consulta, hilos, m, ok in medianas:
-        print(f"{backend:8} {consulta:8} {hilos:>5} {m:12.3f}  {'sí' if ok else 'NO'}")
+        print(f"{backend:12} {consulta:8} {hilos:>5} {m:12.3f}  {'sí' if ok else 'NO'}")
     print(f"Escrito {salida.relative_to(RAIZ)} ({fallos} configuraciones fallidas)")
 
 

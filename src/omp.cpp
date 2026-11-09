@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include "backends.hpp"
@@ -13,6 +14,18 @@
 constexpr size_t TAM_MORSEL = 1 << 16;
 
 static size_t num_morsels(size_t n) { return (n + TAM_MORSEL - 1) / TAM_MORSEL; }
+
+// Arreglo de n copias de v inicializado por todos los hilos con schedule(static).
+// Linux coloca cada página en el nodo NUMA del hilo que la escribe primero (first touch).
+// Con un std::vector la escribiría entera el hilo que lo construye, y en una máquina de dos sockets todos los accesos
+// del otro socket serían remotos (en smexa, con la tabla en un solo nodo, Q3 empeoraba de 114 ms con 64 hilos a 135 ms con 128).
+template <typename T>
+static std::unique_ptr<T[]> arreglo_repartido(size_t n, T v) {
+  std::unique_ptr<T[]> p(new T[n]);
+#pragma omp parallel for schedule(static)
+  for (size_t i = 0; i < n; i++) p[i] = v;
+  return p;
+}
 
 ResQ6 q6_omp(const Datos& d) {
   const auto& l = d.l;
@@ -131,8 +144,10 @@ ResQ3 q3_omp(const Datos& d) {
   int bits = 4;
   while ((size_t{1} << bits) < 2 * n_build) bits++;
   const size_t cap = size_t{1} << bits, mascara = cap - 1;
-  std::vector<int32_t> claves(cap, 0), filas(cap);
-  std::vector<int64_t> revenue(cap, 0);
+  // filas no se inicializa: solo se lee en los huecos que el build ocupó.
+  auto claves = arreglo_repartido<int32_t>(cap, 0);
+  auto revenue = arreglo_repartido<int64_t>(cap, 0);
+  std::unique_ptr<int32_t[]> filas(new int32_t[cap]);
 
   // Build paralelo con CAS sobre la clave del hueco, como el build con atomicCAS de Crystal (Shanbhag et al., SIGMOD 2020).
   // Se prefiere al particionado (radix join) porque evita un pase extra de reparto sobre orders y el build es ~1/40 de las filas de lineitem.
