@@ -29,4 +29,4 @@ make                                       # make CUDA=1 CUDA_ARCH=sm_80 para in
 .venv/bin/python scripts/graficas.py resultados/*.csv
 ```
 
-GPU en Colab: `colab.ipynb`. Clúster SC3: poner partición y núcleos en `scripts/sc3.slurm` y `sbatch scripts/sc3.slurm`.
+GPU en Colab: `colab.ipynb`. Clúster SC3: `sbatch scripts/sc3_cpu.slurm` (OpenMP en smexa, 256 hilos) y `sbatch scripts/sc3_gpu.slurm` (CUDA en felix, Titan X).
