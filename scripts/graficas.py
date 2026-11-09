@@ -153,7 +153,7 @@ def contencion(m: dict, salida: Path):
             ax.text(x, ms * 1.02, f"{ms:.0f}", ha="center", fontsize=14)
     ax.set_xticks(range(len(gpus)), gpus)
     ax.set_ylabel("Cómputo de Q1 en GPU (ms, SF 10)")
-    ax.legend(frameon=False, loc="upper left", fontsize=13)
+    ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=13)
     guardar(fig, salida, "contencion")
 
 

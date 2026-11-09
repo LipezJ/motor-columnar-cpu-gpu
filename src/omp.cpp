@@ -18,7 +18,8 @@ static size_t num_morsels(size_t n) { return (n + TAM_MORSEL - 1) / TAM_MORSEL; 
 // Arreglo de n copias de v inicializado por todos los hilos con schedule(static).
 // Linux coloca cada página en el nodo NUMA del hilo que la escribe primero (first touch).
 // Con un std::vector la escribiría entera el hilo que lo construye, y en una máquina de dos sockets todos los accesos
-// del otro socket serían remotos (en smexa, con la tabla en un solo nodo, Q3 empeoraba de 114 ms con 64 hilos a 135 ms con 128).
+// del otro socket serían remotos, y llenarlo sería una parte serial del tiempo.
+// En smexa (SF 50), repartirlo bajó Q3 de 114 a 80 ms con 64 hilos y de 135 a 77 ms con 128.
 template <typename T>
 static std::unique_ptr<T[]> arreglo_repartido(size_t n, T v) {
   std::unique_ptr<T[]> p(new T[n]);

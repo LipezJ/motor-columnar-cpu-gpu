@@ -96,6 +96,14 @@ Cada una estresa una parte distinta del hardware:
 SF 10 = 60 millones de filas; SF 50 = 300 millones.
 }
 
+\block{Trabajo futuro}{
+\begin{itemize}
+\item Copias por PCIe desde memoria fijada (\textit{pinned}).
+\item Agregación por warp en Q1 para reducir la contención.
+\item Llevar el backend GPU a HIP para las AMD MI210 del SC3.
+\end{itemize}
+}
+
 % Columna 2: hallazgo principal
 \column{0.37}
 
@@ -104,9 +112,9 @@ SF 10 = 60 millones de filas; SF 50 = 300 millones.
 \figura{../resultados/graficas/central.pdf}{0.97\linewidth}
 \end{center}
 \begin{itemize}
-\item \textbf{Con los datos ya en la GPU}, la T4 iguala a 128 núcleos de CPU en Q6 y les gana 2 veces en el join (Q3).
+\item \textbf{Con los datos ya en la GPU}, la T4 iguala a 128 núcleos de CPU en Q6 y les gana por poco (1,2 veces) en el join (Q3).
 \item \textbf{Si hay que copiar los datos por PCIe}, la GPU pierde en las tres consultas: la copia tarda hasta 100 veces más que el cálculo.
-\item \textbf{En la agregación (Q1)} gana la CPU por 11 veces: miles de hilos de la GPU compiten por los mismos 4 acumuladores.
+\item \textbf{En la agregación (Q1)} gana la CPU por 12 veces: miles de hilos de la GPU compiten por los mismos 4 acumuladores.
 \end{itemize}
 }
 
@@ -134,7 +142,7 @@ Con los mismos datos y tipos, nuestro motor es 1,5 veces más rápido que DuckDB
 \figura{../resultados/graficas/escalado.pdf}{\linewidth}
 \end{center}
 \begin{itemize}
-\item \textbf{Q1 y Q3} escalan casi ideal hasta 32 hilos.
+\item \textbf{Q1 y Q3} escalan casi ideal hasta 32 hilos. Q3 llega a 52 veces con 128 hilos tras repartir su tabla hash entre los dos sockets (antes se estancaba en 29).
 \item \textbf{Q6} sube por escalones: cada 8 núcleos comparten un enlace a memoria, y con 64 hilos ya lee a la velocidad máxima de un socket.
 \item \textbf{NUMA:} repartir la memoria entre los dos sockets hace a Q6 1,5 veces más rápida con 128 hilos.
 \end{itemize}
@@ -142,17 +150,9 @@ Con los mismos datos y tipos, nuestro motor es 1,5 veces más rápido que DuckDB
 
 \block{Contención en GPU (Q1)}{
 \begin{center}
-\figura{../resultados/graficas/contencion.pdf}{0.75\linewidth}
+\figura{../resultados/graficas/contencion.pdf}{0.62\linewidth}
 \end{center}
-Acumular primero en la memoria compartida de cada bloque evita que todos los hilos escriban en las mismas direcciones globales.
-}
-
-\block{Trabajo futuro}{
-\begin{itemize}
-\item Copias por PCIe desde memoria fijada (\textit{pinned}).
-\item Agregación por warp en Q1 para reducir la contención.
-\item Llevar el backend GPU a HIP para las AMD MI210 del SC3.
-\end{itemize}
+Acumular primero en la memoria compartida de cada bloque evita que todos los hilos escriban en las mismas direcciones globales: 9,4 veces más rápido en la T4 y 3,3 veces en la Titan X, que emula los atómicos de 64 bits en memoria compartida.
 }
 
 \end{columns}
