@@ -10,3 +10,4 @@ __pycache__/
 motor-bench-*.log
 build-*/
 poster/*.pdf
+poster/guion.py
