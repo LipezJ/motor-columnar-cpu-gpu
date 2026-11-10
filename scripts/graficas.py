@@ -89,7 +89,10 @@ def central(m: dict, salida: Path):
                        lambda q, g=gpu: m[(g, "cuda", q, 1)][2], "10"))
         series.append((f"GPU {gpu} (CUDA), copiando por PCIe", color, "//",
                        lambda q, g=gpu: m[(g, "cuda", q, 1)][0], "10"))
-    fig, ax = plt.subplots(figsize=(12, 4.8))
+    # Eje partido, lineal en los dos tramos: con una sola escala lineal el serial y las copias por PCIe (< 0,3)
+    # quedan en el piso, y con escala logarítmica la ventaja de la A100 sobre la CPU se ve aplastada.
+    TRAMO_BAJO, TRAMO_ALTO = (0, 0.35), (1, 150)
+    fig, (arriba, abajo) = plt.subplots(2, 1, figsize=(12, 6), sharex=True, gridspec_kw={"height_ratios": [3, 1]})
     ancho = 0.85 / len(series)
     for i, (nombre, color, rayado, tiempo, sf) in enumerate(series):
         for j, q in enumerate(CONSULTAS):
@@ -98,19 +101,23 @@ def central(m: dict, salida: Path):
                 continue
             gfilas = FILAS_LINEITEM[sf] / (ms / 1000) / 1e9
             x = j + (i - (len(series) - 1) / 2) * ancho
-            ax.bar(x, gfilas, ancho, color="white" if rayado else color, edgecolor=color, hatch=rayado, lw=1.5,
-                   label=nombre if j == 0 else None)
-            ax.text(x, gfilas * 1.12, etiqueta(gfilas), ha="center", fontsize=11)
-    # Una marca con número en cada potencia de 10 de todo el rango, para leer las barras sin notación científica.
-    decadas = [0.01, 0.1, 1, 10, 100, 1000]
-    ax.set_yscale("log")
-    ax.set_ylim(decadas[0], decadas[-1])
-    ax.set_yticks(decadas, ["0,01", "0,1", "1", "10", "100", "1000"])
-    ax.grid(axis="y", color="#dddddd", lw=1)
-    ax.set_axisbelow(True)
-    ax.set_ylabel("Miles de millones de filas/s")
-    ax.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
-    ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, fontsize=13)
+            for ax in (arriba, abajo):
+                ax.bar(x, gfilas, ancho, color="white" if rayado else color, edgecolor=color, hatch=rayado, lw=1.5,
+                       label=nombre if j == 0 and ax is arriba else None)
+            ax_texto, sube = (arriba, 2) if gfilas >= TRAMO_ALTO[0] else (abajo, 0.01)
+            ax_texto.text(x, gfilas + sube, etiqueta(gfilas), ha="center", fontsize=11)
+    arriba.set_ylim(*TRAMO_ALTO)
+    abajo.set_ylim(*TRAMO_BAJO)
+    abajo.set_yticks([0, 0.1, 0.2, 0.3], ["0", "0,1", "0,2", "0,3"])
+    arriba.spines["bottom"].set_visible(False)
+    abajo.spines["top"].set_visible(False)
+    arriba.tick_params(bottom=False)
+    # Marcas diagonales del corte en el eje y.
+    for ax, y in ((arriba, 0), (abajo, 1)):
+        ax.plot([-0.012, 0.012], [y - 0.02, y + 0.02], transform=ax.transAxes, color="black", lw=1.5, clip_on=False)
+    fig.supylabel("Miles de millones de filas/s", fontsize=20)
+    abajo.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
+    arriba.legend(frameon=False, loc="upper right", fontsize=13)
     guardar(fig, salida, "central")
 
 
