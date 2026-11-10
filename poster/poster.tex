@@ -73,7 +73,7 @@
   \begin{minipage}[c]{0.15\linewidth}\centering\includegraphics[width=0.8\linewidth]{logos/uis.png}\end{minipage}%
   \begin{minipage}[c]{0.7\linewidth}\centering\color{titlefgcolor}
     {\bfseries\fontsize{80}{90}\selectfont\@title\par}\vspace{0.3em}
-    {\Large\color{marino!80}Un motor de consultas columnar en serial, OpenMP y CUDA\par}\vspace{0.6em}
+    {\Large\color{marino!80}Tres consultas de TPC-H escritas a mano en serial, OpenMP y CUDA\par}\vspace{0.6em}
     {\LARGE\color{tinta}\@author\par}\vspace{0.4em}
     {\large\color{tinta}\@institute\par}
   \end{minipage}%
@@ -96,12 +96,12 @@ Las GPU dominan el entrenamiento de IA. ¿Ganan también en el trabajo diario de
 
 \vspace{0.6em}
 \innerblock{}{
-\dato{Objetivo:} con el mismo motor y los mismos datos, medir cuándo compensa cada arquitectura (un núcleo, una CPU de muchos núcleos o una GPU) y qué la limita.
+\dato{Objetivo:} con el mismo código y los mismos datos, medir cuándo compensa cada arquitectura (un núcleo, una CPU de muchos núcleos o una GPU) y qué la limita.
 }
 }
 
 \block{Qué construimos}{
-Un motor de consultas columnar escrito desde cero, con tres versiones de la misma lógica y verificación automática de cada resultado:
+Tres consultas escritas a mano en C++ y CUDA sobre datos guardados por columnas, cada una en tres versiones de la misma lógica y con verificación automática del resultado:
 
 \vspace{0.6em}
 \begin{center}

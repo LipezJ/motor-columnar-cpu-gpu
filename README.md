@@ -1,10 +1,10 @@
-# Motor de consultas analíticas: serial vs CPU paralela vs GPU
+# Consultas analíticas en serial, CPU paralela y GPU
 
 Proyecto final de Programación Paralela (UIS).
 
 **Pregunta:** ¿cuándo vale la pena ejecutar consultas analíticas en GPU frente a una CPU multinúcleo?
 
-Implementamos en C++ y CUDA un motor de consultas columnar en tres versiones y las medimos sobre consultas de TPC-H.
+Implementamos a mano, en C++ y CUDA, tres consultas de TPC-H sobre datos guardados por columnas, cada una en tres versiones, y las medimos. No es un motor de SQL: cada consulta tiene su código.
 
 | Versión | Archivo | Basado en |
 |---|---|---|
