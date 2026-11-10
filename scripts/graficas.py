@@ -60,8 +60,8 @@ def medianas(directorio: Path) -> dict:
 
 
 def etiqueta(v: float) -> str:
-    """Dos cifras significativas sin notación científica (140 y no 1.4e+02)."""
-    return f"{v:.0f}" if v >= 10 else f"{v:.2g}"
+    """Dos cifras significativas, sin notación científica y con coma decimal (140 y no 1.4e+02)."""
+    return (f"{v:.0f}" if v >= 10 else f"{v:.2g}").replace(".", ",")
 
 
 def guardar(fig, salida: Path, nombre: str):
@@ -71,34 +71,47 @@ def guardar(fig, salida: Path, nombre: str):
     print(f"  {nombre}")
 
 
-def central(m: dict, salida: Path, gpu: str):
+def central(m: dict, salida: Path):
     # La CPU se midió en SF 50 y la GPU en SF 10, así que se comparan filas por segundo y no milisegundos.
     def mejor_cpu(q):
         tiempos = [v[0] for (maq, b, c, _), v in m.items() if maq.startswith("smexa") and b == "omp" and c == q]
         return min(tiempos) if tiempos else None
 
     series = [
-        ("1 núcleo CPU (serial, Volcano)", COLOR["serial"], lambda q: m.get(("smexa", "serial", q, 1), (None,))[0], "50"),
-        ("2 AMD EPYC, 128 núcleos (OpenMP)", COLOR["cpu"], mejor_cpu, "50"),
-        (f"GPU {gpu} (CUDA), datos ya en la GPU", COLOR["gpu"], lambda q: m.get((gpu, "cuda", q, 1), (0, 0, None))[2], "10"),
-        (f"GPU {gpu} (CUDA), copiando por PCIe", COLOR["pcie"], lambda q: m.get((gpu, "cuda", q, 1), (None,))[0], "10"),
+        ("1 núcleo CPU (serial, Volcano)", COLOR["serial"], "", lambda q: m.get(("smexa", "serial", q, 1), (None,))[0], "50"),
+        ("2 AMD EPYC, 128 núcleos (OpenMP)", COLOR["cpu"], "", mejor_cpu, "50"),
     ]
-    fig, ax = plt.subplots(figsize=(12, 5))
-    ancho = 0.2
-    for i, (nombre, color, tiempo, sf) in enumerate(series):
+    # El color es la GPU; el relleno rayado marca la medición que incluye la copia por PCIe.
+    for gpu, color in (("T4", "#56B4E9"), ("A100", "#009E73")):
+        if (gpu, "cuda", "q6", 1) not in m:
+            continue
+        series.append((f"GPU {gpu} (CUDA), datos ya en la GPU", color, "",
+                       lambda q, g=gpu: m[(g, "cuda", q, 1)][2], "10"))
+        series.append((f"GPU {gpu} (CUDA), copiando por PCIe", color, "//",
+                       lambda q, g=gpu: m[(g, "cuda", q, 1)][0], "10"))
+    fig, ax = plt.subplots(figsize=(12, 4.8))
+    ancho = 0.85 / len(series)
+    for i, (nombre, color, rayado, tiempo, sf) in enumerate(series):
         for j, q in enumerate(CONSULTAS):
             ms = tiempo(q)
             if not ms:
                 continue
             gfilas = FILAS_LINEITEM[sf] / (ms / 1000) / 1e9
-            x = j + (i - 1.5) * ancho
-            ax.bar(x, gfilas, ancho, color=color, label=nombre if j == 0 else None)
-            ax.text(x, gfilas * 1.08, etiqueta(gfilas), ha="center", fontsize=13)
+            x = j + (i - (len(series) - 1) / 2) * ancho
+            ax.bar(x, gfilas, ancho, color="white" if rayado else color, edgecolor=color, hatch=rayado, lw=1.5,
+                   label=nombre if j == 0 else None)
+            ax.text(x, gfilas * 1.12, etiqueta(gfilas), ha="center", fontsize=11)
+    # Una marca con número en cada potencia de 10 de todo el rango, para leer las barras sin notación científica.
+    decadas = [0.01, 0.1, 1, 10, 100, 1000]
     ax.set_yscale("log")
+    ax.set_ylim(decadas[0], decadas[-1])
+    ax.set_yticks(decadas, ["0,01", "0,1", "1", "10", "100", "1000"])
+    ax.grid(axis="y", color="#dddddd", lw=1)
+    ax.set_axisbelow(True)
     ax.set_ylabel("Miles de millones de filas/s")
     ax.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
-    ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)
-    guardar(fig, salida, "central" if gpu == "T4" else f"central_{gpu}")
+    ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, fontsize=13)
+    guardar(fig, salida, "central")
 
 
 def escalado(m: dict, salida: Path):
@@ -202,7 +215,7 @@ def relativa(m: dict, salida: Path):
             x = j + (i - (len(series) - 1) / 2) * ancho
             ax.bar(x, veces, ancho, color=color[g] if not rayado else "white", edgecolor=color[g], hatch=rayado,
                    lw=1.5, label=nombre if j == 0 else None)
-            ax.text(x, veces + 0.12, f"{veces:.2f}" if veces < 1 else f"{veces:.1f}", ha="center", fontsize=12)
+            ax.text(x, veces + 0.12, (f"{veces:.2f}" if veces < 1 else f"{veces:.1f}").replace(".", ","), ha="center", fontsize=12)
     ax.axhline(1, color="black", ls="--", lw=1.5, label="CPU de 128 núcleos (= 1)")
     ax.set_ylabel("Veces más rápida que la CPU")
     ax.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
@@ -238,13 +251,12 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--resultados", default=str(RAIZ / "resultados"))
     p.add_argument("--salida", default=str(RAIZ / "resultados" / "graficas"))
-    p.add_argument("--gpu", default="T4", help="GPU de la figura central (valor de la columna maquina)")
     args = p.parse_args()
     salida = Path(args.salida)
     salida.mkdir(parents=True, exist_ok=True)
     m = medianas(Path(args.resultados))
     print(f"Figuras en {salida}:")
-    central(m, salida, args.gpu)
+    central(m, salida)
     escalado(m, salida)
     contencion(m, salida)
     gpus(m, salida)

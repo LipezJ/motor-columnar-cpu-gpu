@@ -111,7 +111,7 @@ Tres consultas escritas a mano en C++ y CUDA sobre datos guardados por columnas,
 \node[caja, below=1.6cm of col, xshift=-6.2cm, fill=gris!15] (ser) {Serial\\{\small Volcano}};
 \node[caja, right=0.8cm of ser, fill=azul!12] (omp) {OpenMP\\{\small morsels}};
 \node[caja, right=0.8cm of omp, fill=verde!15] (gpu) {CUDA\\{\small tiles}};
-\node[caja, below=1.6cm of omp] (val) {Resultado idéntico al de DuckDB\\{\small 385 de 385 mediciones}};
+\node[caja, below=1.6cm of omp] (val) {Resultado idéntico al de DuckDB\\{\small 495 de 495 mediciones}};
 \draw[flecha] (gen) -- (col);
 \foreach \b in {ser, omp, gpu} { \draw[flecha] (col.south) -- (\b.north); \draw[flecha] (\b.south) -- (val.north); }
 \end{tikzpicture}
@@ -135,14 +135,14 @@ TPC-H es el benchmark estándar de bases de datos analíticas. Elegimos tres de 
 \block{Plataformas}{
 \begin{itemize}
 \item \dato{CPU:} nodo \texttt{smexa} del SC3-UIS, 2 AMD EPYC 9534 (128 núcleos, 2 nodos NUMA).
-\item \dato{GPU:} NVIDIA T4 (Google Colab) y GTX Titan X (nodo \texttt{felix} del SC3-UIS).
+\item \dato{GPU:} NVIDIA T4 y A100 (Google Colab) y GTX Titan X (nodo \texttt{felix} del SC3-UIS).
 \end{itemize}
 }
 
 \block{Dimensionamiento}{
 \begin{itemize}
 \item \textbf{Alcance:} 3 consultas y no las 22, una por cuello de botella; sin parser SQL ni optimizador.
-\item \textbf{Datos:} SF 50 en CPU y SF 10 en GPU (cabe en sus 15 GB); por eso se comparan filas por segundo.
+\item \textbf{Datos:} SF 50 en CPU y SF 10 en GPU (cabe en los 16 GB de la T4); por eso se comparan filas por segundo.
 \item \textbf{Clúster:} cuota de 1 GB y jobs de 1 hora; los datos se cargaron en el disco en RAM de cada nodo.
 \end{itemize}
 }
@@ -236,12 +236,12 @@ Cada operador pide la siguiente fila a su hijo con una llamada \texttt{next()} v
 
 \block{Resultado: la GPU no gana siempre}{
 \begin{center}
-\figura{../resultados/graficas/central.pdf}{0.9\linewidth}
+\figura{../resultados/graficas/central.pdf}{0.86\linewidth}
 \end{center}
 \begin{itemize}
-\item \textbf{Con los datos ya en la GPU}, la T4 iguala a 128 núcleos en Q6 y les gana por 1,2 veces en el join.
-\item \textbf{Copiando por PCIe}, la GPU pierde en las tres: la copia tarda hasta 100 veces más que el cálculo.
-\item \textbf{En la agregación} gana la CPU por 12 veces, por la contención de atómicos en la GPU.
+\item \textbf{Con los datos ya en la GPU}, la A100 es 3,9 veces más rápida que 128 núcleos en el filtro y 8,5 veces en el join; la T4, una GPU de entrada, apenas empata.
+\item \textbf{Copiando por PCIe}, todas las GPU pierden: la copia tarda hasta 100 veces más que el cálculo, también en la A100.
+\item \textbf{En la agregación} gana la CPU, 2,7 veces frente a la A100 y 11 frente a la T4, por la contención de atómicos en la GPU.
 \end{itemize}
 }
 
@@ -262,7 +262,7 @@ Cada operador pide la siguiente fila a su hijo con una llamada \texttt{next()} v
 \end{minipage}%
 \hspace{0.03\linewidth}%
 \begin{minipage}[c]{0.53\linewidth}
-Acumular por bloque hace a Q1 \dato{9,4 veces} más rápida en la T4.
+Acumular por bloque hace a Q1 \dato{9,4 veces} más rápida en la T4 y \dato{38 veces} en la A100.
 
 \vspace{0.6em}
 Frente a \dato{DuckDB}, en la misma máquina y con los mismos tipos, nuestras consultas escritas a mano son 1,5 veces más rápidas en el join y unas 5 veces en el filtro y la agregación: es la ganancia de especializar, no del paralelismo.
