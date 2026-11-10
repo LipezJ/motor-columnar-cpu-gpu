@@ -59,6 +59,11 @@ def medianas(directorio: Path) -> dict:
     return {k: tuple(statistics.median(m[i] for m in v) for i in range(3)) for k, v in medidas.items()}
 
 
+def etiqueta(v: float) -> str:
+    """Dos cifras significativas sin notación científica (140 y no 1.4e+02)."""
+    return f"{v:.0f}" if v >= 10 else f"{v:.2g}"
+
+
 def guardar(fig, salida: Path, nombre: str):
     for ext in ("pdf", "png"):
         fig.savefig(salida / f"{nombre}.{ext}", dpi=150)
@@ -66,7 +71,7 @@ def guardar(fig, salida: Path, nombre: str):
     print(f"  {nombre}")
 
 
-def central(m: dict, salida: Path):
+def central(m: dict, salida: Path, gpu: str):
     # La CPU se midió en SF 50 y la GPU en SF 10, así que se comparan filas por segundo y no milisegundos.
     def mejor_cpu(q):
         tiempos = [v[0] for (maq, b, c, _), v in m.items() if maq.startswith("smexa") and b == "omp" and c == q]
@@ -75,8 +80,8 @@ def central(m: dict, salida: Path):
     series = [
         ("1 núcleo CPU (serial, Volcano)", COLOR["serial"], lambda q: m.get(("smexa", "serial", q, 1), (None,))[0], "50"),
         ("2 AMD EPYC, 128 núcleos (OpenMP)", COLOR["cpu"], mejor_cpu, "50"),
-        ("GPU T4, datos ya en la GPU", COLOR["gpu"], lambda q: m.get(("T4", "cuda", q, 1), (0, 0, None))[2], "10"),
-        ("GPU T4, copiando por PCIe", COLOR["pcie"], lambda q: m.get(("T4", "cuda", q, 1), (None,))[0], "10"),
+        (f"GPU {gpu} (CUDA), datos ya en la GPU", COLOR["gpu"], lambda q: m.get((gpu, "cuda", q, 1), (0, 0, None))[2], "10"),
+        (f"GPU {gpu} (CUDA), copiando por PCIe", COLOR["pcie"], lambda q: m.get((gpu, "cuda", q, 1), (None,))[0], "10"),
     ]
     fig, ax = plt.subplots(figsize=(12, 5))
     ancho = 0.2
@@ -88,12 +93,12 @@ def central(m: dict, salida: Path):
             gfilas = FILAS_LINEITEM[sf] / (ms / 1000) / 1e9
             x = j + (i - 1.5) * ancho
             ax.bar(x, gfilas, ancho, color=color, label=nombre if j == 0 else None)
-            ax.text(x, gfilas * 1.08, f"{gfilas:.2g}", ha="center", fontsize=13)
+            ax.text(x, gfilas * 1.08, etiqueta(gfilas), ha="center", fontsize=13)
     ax.set_yscale("log")
     ax.set_ylabel("Miles de millones de filas/s")
     ax.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
     ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2)
-    guardar(fig, salida, "central")
+    guardar(fig, salida, "central" if gpu == "T4" else f"central_{gpu}")
 
 
 def escalado(m: dict, salida: Path):
@@ -158,18 +163,93 @@ def contencion(m: dict, salida: Path):
     guardar(fig, salida, "contencion")
 
 
+def gpus(m: dict, salida: Path):
+    """Cómputo de cada consulta en cada GPU medida (SF 10, sin la copia)."""
+    nombres = sorted({maq for (maq, b, _, _) in m if b == "cuda"})
+    if len(nombres) < 2:
+        return
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ancho = 0.8 / len(nombres)
+    for i, gpu in enumerate(nombres):
+        for j, q in enumerate(CONSULTAS):
+            ms = m[(gpu, "cuda", q, 1)][2]
+            x = j + (i - (len(nombres) - 1) / 2) * ancho
+            ax.bar(x, ms, ancho, color=plt.cm.viridis(i / len(nombres)), label=gpu if j == 0 else None)
+            ax.text(x, ms * 1.08, etiqueta(ms), ha="center", fontsize=13)
+    ax.set_yscale("log")
+    ax.set_ylabel("Cómputo en GPU (ms, SF 10)")
+    ax.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
+    ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=len(nombres))
+    guardar(fig, salida, "gpus")
+
+
+def relativa(m: dict, salida: Path):
+    """Cuántas veces más rápida que la CPU de 128 núcleos es cada GPU, en escala lineal (1 = empate)."""
+    gpus_medidas = [g for g in ("T4", "A100") if (g, "cuda", "q6", 1) in m]
+    if not gpus_medidas:
+        return
+    cpu = {q: min(v[0] for (maq, b, c, _), v in m.items() if maq.startswith("smexa") and b == "omp" and c == q)
+           for q in CONSULTAS}
+    color = {"T4": "#56B4E9", "A100": "#009E73"}
+    # El color es la GPU; el relleno rayado marca la medición que incluye la copia por PCIe.
+    series = [(f"{g}, {texto}", g, campo, rayado) for g in gpus_medidas
+              for texto, campo, rayado in (("datos ya en la GPU", 2, ""), ("copiando por PCIe", 0, "//"))]
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ancho = 0.8 / len(series)
+    for i, (nombre, g, campo, rayado) in enumerate(series):
+        for j, q in enumerate(CONSULTAS):
+            veces = (FILAS_LINEITEM["10"] / m[(g, "cuda", q, 1)][campo]) / (FILAS_LINEITEM["50"] / cpu[q])
+            x = j + (i - (len(series) - 1) / 2) * ancho
+            ax.bar(x, veces, ancho, color=color[g] if not rayado else "white", edgecolor=color[g], hatch=rayado,
+                   lw=1.5, label=nombre if j == 0 else None)
+            ax.text(x, veces + 0.12, f"{veces:.2f}" if veces < 1 else f"{veces:.1f}", ha="center", fontsize=12)
+    ax.axhline(1, color="black", ls="--", lw=1.5, label="CPU de 128 núcleos (= 1)")
+    ax.set_ylabel("Veces más rápida que la CPU")
+    ax.set_xticks(range(len(CONSULTAS)), [NOMBRE[q] for q in CONSULTAS])
+    ax.legend(frameon=False, loc="upper left", fontsize=13)
+    guardar(fig, salida, "relativa")
+
+
+def desglose(m: dict, salida: Path):
+    """Tiempo de cada consulta en GPU separado en copia y cálculo, en escala lineal."""
+    gpus_medidas = [g for g in ("T4", "A100") if (g, "cuda", "q6", 1) in m]
+    if not gpus_medidas:
+        return
+    fig, ax = plt.subplots(figsize=(12, 5.5))
+    xs, nombres = [], []
+    for j, q in enumerate(CONSULTAS):
+        for i, g in enumerate(gpus_medidas):
+            total, copia, calculo = m[(g, "cuda", q, 1)]
+            x = j * (len(gpus_medidas) + 1) + i
+            ax.bar(x, calculo, 0.8, color=COLOR["gpu"], label="cálculo" if x == 0 else None)
+            ax.bar(x, copia, 0.8, bottom=calculo, color=COLOR["pcie"], label="copia por PCIe" if x == 0 else None)
+            ax.text(x, total + 6, f"cálculo:\n{calculo:.1f} ms", ha="center", fontsize=11)
+            xs.append(x)
+            nombres.append(g)
+        ax.text(j * (len(gpus_medidas) + 1) + (len(gpus_medidas) - 1) / 2, -75, NOMBRE[q], ha="center", fontsize=18)
+    ax.set_xticks(xs, nombres)
+    ax.set_ylabel("Tiempo en GPU (ms, SF 10)")
+    ax.set_ylim(0, max(v[0] for (maq, b, _, _), v in m.items() if b == "cuda" and maq in gpus_medidas) * 1.3)
+    ax.legend(frameon=False, loc="upper right", fontsize=14)
+    guardar(fig, salida, "desglose")
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--resultados", default=str(RAIZ / "resultados"))
     p.add_argument("--salida", default=str(RAIZ / "resultados" / "graficas"))
+    p.add_argument("--gpu", default="T4", help="GPU de la figura central (valor de la columna maquina)")
     args = p.parse_args()
     salida = Path(args.salida)
     salida.mkdir(parents=True, exist_ok=True)
     m = medianas(Path(args.resultados))
     print(f"Figuras en {salida}:")
-    central(m, salida)
+    central(m, salida, args.gpu)
     escalado(m, salida)
     contencion(m, salida)
+    gpus(m, salida)
+    relativa(m, salida)
+    desglose(m, salida)
 
 
 if __name__ == "__main__":
